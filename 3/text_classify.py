@@ -1,9 +1,11 @@
-from sklearn import model_selection, preprocessing, metrics, svm
+from sklearn import model_selection, metrics, svm
 from sklearn.feature_extraction.text import TfidfVectorizer
 import pandas
 import numpy as np
 
 # load the dataset
+from sklearn.linear_model import SGDClassifier
+
 data = open('./data/train.dat').read()
 labels, texts = [], []
 for i, line in enumerate(data.split("\n")):
@@ -28,7 +30,8 @@ xtrain_tfidf = tfidf_vect.transform(train_x)
 xvalid_tfidf = tfidf_vect.transform(valid_x)
 
 # fit the training dataset on the classifier
-classifier = svm.LinearSVC()
+# SVM with SGD Method
+classifier = SGDClassifier(loss="hinge", penalty="l2", max_iter=50, fit_intercept=True)
 classifier.fit(xtrain_tfidf, train_y)
 
 # predict the labels on validation dataset
@@ -52,9 +55,11 @@ test_tfidf = tfidf_vect.transform(testDF['test_txt'])
 predictions = classifier.predict(test_tfidf)
 
 # output the real test result into result.txt
-with open('result.txt', 'wb') as f:
-    np.savetxt(f, predictions, fmt='%s')
+# with open('tmp.txt', 'wb') as f:
+#     np.savetxt(f, predictions, fmt='%s')
 
+
+# ------
 data = open('./data/answer.txt').read()
 answer = []
 for i, line in enumerate(data.split("\n")):
@@ -64,3 +69,4 @@ answerDF = pandas.DataFrame()
 answerDF['answer'] = answer
 accuracy = metrics.accuracy_score(predictions, answerDF['answer'])
 print "The real accuracy:", accuracy
+# -------
