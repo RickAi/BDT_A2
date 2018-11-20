@@ -27,7 +27,10 @@ class PMF():
     def load_matrix(self, train_data):
         user_set = set(train_data[:, 0])
         movie_set = set(train_data[:, 1])
-        R = pd.DataFrame(np.zeros((len(user_set), len(movie_set))), index=user_set, columns=movie_set)
+        user_count = len(user_set)
+        movie_count = len(movie_set)
+        print('user count: %d, movie count: %d' % (user_count, movie_count))
+        R = pd.DataFrame(np.zeros((user_count, movie_count)), index=user_set, columns=movie_set)
         for item in train_data:
             R.at[item[0], item[1]] = item[2]
         return R
