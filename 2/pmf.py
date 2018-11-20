@@ -30,7 +30,9 @@ class PMF():
         user_count = len(user_set)
         movie_count = len(movie_set)
         print('user count: %d, movie count: %d' % (user_count, movie_count))
-        R = pd.DataFrame(np.zeros((user_count, movie_count)), index=user_set, columns=movie_set)
+        # np.zeros((user_count, movie_count)),
+        R = pd.DataFrame(index=user_set, columns=movie_set)
+        print('load_matrix success...')
         for item in train_data:
             R.at[item[0], item[1]] = item[2]
         return R
@@ -61,6 +63,8 @@ class PMF():
         momuntum_v = np.zeros(self.V.shape)
 
         for it in range(self.iterations):
+            print('start traning iteration:{: d}'.format(it))
+
             # derivate of Vi
             grads_u = np.dot(self.I * (self.R - np.dot(self.U, self.V.T)), -self.V) + self.lambda_alpha * self.U
 
