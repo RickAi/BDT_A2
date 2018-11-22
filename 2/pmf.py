@@ -3,6 +3,7 @@ import numpy as np
 from numpy.random import RandomState
 import copy
 from load_data import mapping
+import json
 
 
 class PMF():
@@ -11,6 +12,7 @@ class PMF():
                  lr=0.001, iters=200, seed=None):
         self.user_id_map = mapping(train_data[:, 0])
         self.movie_id_map = mapping(train_data[:, 1])
+        self.save_mappings()
         self.lambda_alpha = lambda_alpha
         self.lambda_beta = lambda_beta
         self.momuntum = momuntum
@@ -51,6 +53,21 @@ class PMF():
         preds_value_array = np.sum(u_features * v_features, 1)
         return preds_value_array
 
+    def save_mappings(self):
+        print('start save_mappings.')
+        with open('./model/user_id_map.txt', 'w') as file:
+            file.write(json.dumps(self.user_id_map))
+
+        with open('./model/movie_id_map.txt', 'w') as file:
+            file.write(json.dumps(self.movie_id_map))
+        print('finish save_mappings.')
+
+    def save_model(self):
+        print('start save_model.')
+        np.savetxt('./model/u_model.txt', self.U, delimiter=',')
+        np.savetxt('./model/v_model.txt', self.V, delimiter=',')
+        print('finish save_model.')
+
     def train(self, vali_data=None):
         train_loss_list = []
         vali_rmse_list = []
@@ -75,6 +92,8 @@ class PMF():
             self.U = self.U - momuntum_u
             self.V = self.V - momuntum_v
 
+            print("gradient success, start predict and calculate loss.")
+
             # training evaluation
             train_loss = self.loss()
             train_loss_list.append(train_loss)
@@ -85,6 +104,9 @@ class PMF():
 
             print('traning iteration:{: d} ,loss:{: f}, vali_rmse:{: f}'.format(it, train_loss, vali_rmse))
             # print('traning iteration:{: d} , vali_rmse:{: f}'.format(it, vali_rmse))
+
+            if it > 0 and it % 10 == 0:
+                self.save_model()
 
             if last_vali_rmse and (last_vali_rmse - vali_rmse) <= 0:
                 print('convergence at iterations:{: d}'.format(it))

@@ -6,7 +6,7 @@ data, train_data, test_data = load_and_split()
 print('load data success...')
 
 pmf = PMF(train_data=data, lambda_alpha=0.01, lambda_beta=0.01,
-          latent_size=20, momuntum=0.9, lr=3e-5, iters=100000, seed=1)
+          latent_size=20, momuntum=0.9, lr=3e-5, iters=1000, seed=1)
 
 print('start train model...')
 U, V, train_loss_list, vali_rmse_list = pmf.train(vali_data=test_data)

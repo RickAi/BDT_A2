@@ -11,7 +11,7 @@ def load_result_data(file_path='data/test.dat'):
     data = array(prefer)
     return data
 
-def load_and_split(file_path='data/tmp.dat'):
+def load_and_split(file_path='data/train.dat'):
     data = load_data(file_path)
     return train_test_split(data)
 
