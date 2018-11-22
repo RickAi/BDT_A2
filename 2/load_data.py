@@ -11,9 +11,16 @@ def load_result_data(file_path='data/test.dat'):
     data = array(prefer)
     return data
 
-def load_and_split(file_path='data/train.dat'):
+def load_and_split(file_path='data/tmp.dat'):
     data = load_data(file_path)
     return train_test_split(data)
+
+
+def mapping(user_ids):
+    ids_set = set(user_ids)
+    count = len(ids_set)
+    map = dict(zip(ids_set, range(0, count)))
+    return map
 
 
 def load_data(file_path):
@@ -40,4 +47,4 @@ def train_test_split(data, ratio=0.2):
 
     train_data = array(train_data)
     test_data = array(test_data)
-    return train_data, test_data
+    return data, train_data, test_data

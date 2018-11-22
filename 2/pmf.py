@@ -2,13 +2,15 @@ from __future__ import print_function
 import numpy as np
 from numpy.random import RandomState
 import copy
-import pandas as pd
+from load_data import mapping
 
 
 class PMF():
 
     def __init__(self, train_data, lambda_alpha=1e-2, lambda_beta=1e-2, latent_size=50, momuntum=0.8,
                  lr=0.001, iters=200, seed=None):
+        self.user_id_map = mapping(train_data[:, 0])
+        self.movie_id_map = mapping(train_data[:, 1])
         self.lambda_alpha = lambda_alpha
         self.lambda_beta = lambda_beta
         self.momuntum = momuntum
@@ -19,22 +21,17 @@ class PMF():
         self.I = copy.deepcopy(self.R)
         self.I[self.I != 0] = 1
 
-        U = 0.1 * self.random_state.rand(np.size(self.R, 0), latent_size)
-        self.U = pd.DataFrame(U, index=self.R.index.values, columns=np.arange(latent_size))
-        V = 0.1 * self.random_state.rand(np.size(self.R, 1), latent_size)
-        self.V = pd.DataFrame(V, index=self.R.columns.values, columns=np.arange(latent_size))
+        self.U = 0.1 * self.random_state.rand(np.size(self.R, 0), latent_size)
+        self.V = 0.1 * self.random_state.rand(np.size(self.R, 1), latent_size)
 
     def load_matrix(self, train_data):
-        user_set = set(train_data[:, 0])
-        movie_set = set(train_data[:, 1])
-        user_count = len(user_set)
-        movie_count = len(movie_set)
+        user_count = len(set(train_data[:, 0]))
+        movie_count = len(set(train_data[:, 1]))
         print('user count: %d, movie count: %d' % (user_count, movie_count))
-        # np.zeros((user_count, movie_count)),
-        R = pd.DataFrame(index=user_set, columns=movie_set)
-        print('load_matrix success...')
+        R = np.zeros([user_count, movie_count])
         for item in train_data:
-            R.at[item[0], item[1]] = item[2]
+            R[int(self.user_id_map.get(item[0])), int(self.movie_id_map.get(item[1]))] = float(item[2])
+        print('load_matrix success...')
         return R
 
     # the loss function of the model
@@ -47,9 +44,10 @@ class PMF():
         return np.sqrt(np.mean(np.square(preds - truth)))
 
     def predict(self, data):
-        index_data = np.array([[item[0], item[1]] for item in data])
-        u_features = self.U.reindex(index_data.take(0, axis=1), fill_value=0).values
-        v_features = self.V.reindex(index_data.take(1, axis=1), fill_value=0).values
+        index_data = np.array(
+            [[int(self.user_id_map.get(item[0])), int(self.movie_id_map.get(item[1]))] for item in data], dtype=int)
+        u_features = self.U.take(index_data.take(0, axis=1), axis=0)
+        v_features = self.V.take(index_data.take(1, axis=1), axis=0)
         preds_value_array = np.sum(u_features * v_features, 1)
         return preds_value_array
 
@@ -85,14 +83,13 @@ class PMF():
             vali_rmse = self.RMSE(vali_preds, np.asarray(vali_data[:, 2], dtype=float))
             vali_rmse_list.append(vali_rmse)
 
-            # print('traning iteration:{: d} ,loss:{: f}, vali_rmse:{: f}'.format(it, train_loss, vali_rmse))
-            print('traning iteration:{: d} , vali_rmse:{: f}'.format(it, vali_rmse))
-            break
+            print('traning iteration:{: d} ,loss:{: f}, vali_rmse:{: f}'.format(it, train_loss, vali_rmse))
+            # print('traning iteration:{: d} , vali_rmse:{: f}'.format(it, vali_rmse))
 
-            # if last_vali_rmse and (last_vali_rmse - vali_rmse) <= 0:
-            #     print('convergence at iterations:{: d}'.format(it))
-            #     break
-            # else:
-            #     last_vali_rmse = vali_rmse
+            if last_vali_rmse and (last_vali_rmse - vali_rmse) <= 0:
+                print('convergence at iterations:{: d}'.format(it))
+                break
+            else:
+                last_vali_rmse = vali_rmse
 
         return self.U, self.V, train_loss_list, vali_rmse_list
