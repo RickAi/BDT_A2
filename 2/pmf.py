@@ -1,117 +1,55 @@
-from __future__ import print_function
 import numpy as np
-from numpy.random import RandomState
-import copy
-from load_data import mapping
-import json
 
 
-class PMF():
+def PMF(train, test, user_count, movie_count, output_set, lr=0.005, latent=10, lambda_1=0.1, lambda_2=0.1):
+    U = np.random.normal(0, 0.1, (user_count, latent))
+    V = np.random.normal(0, 0.1, (movie_count, latent))
+    iteration = 0
+    while True:
+        loss = 0.0
+        for data in train:
+            u = int(data[0])
+            i = int(data[1])
+            r = data[2]
 
-    def __init__(self, train_data, lambda_alpha=1e-2, lambda_beta=1e-2, latent_size=50, momuntum=0.8,
-                 lr=0.001, iters=200, seed=None):
-        self.user_id_map = mapping(train_data[:, 0])
-        self.movie_id_map = mapping(train_data[:, 1])
-        self.save_mappings()
-        self.lambda_alpha = lambda_alpha
-        self.lambda_beta = lambda_beta
-        self.momuntum = momuntum
-        self.R = self.load_matrix(train_data)
-        self.random_state = RandomState(seed)
-        self.iterations = iters
-        self.lr = lr
-        self.I = copy.deepcopy(self.R)
-        self.I[self.I != 0] = 1
+            e = r - np.dot(U[u], V[i].T)
+            U[u] = U[u] + lr * (e * V[i] - lambda_1 * U[u])
+            V[i] = V[i] + lr * (e * U[u] - lambda_2 * V[i])
 
-        self.U = 0.1 * self.random_state.rand(np.size(self.R, 0), latent_size)
-        self.V = 0.1 * self.random_state.rand(np.size(self.R, 1), latent_size)
+            loss = loss + 0.5 * (e ** 2 + lambda_1 * np.square(U[u]).sum() + lambda_2 * np.square(V[i]).sum())
+        rmse = RMSE(U, V, test)
 
-    def load_matrix(self, train_data):
-        user_count = len(set(train_data[:, 0]))
-        movie_count = len(set(train_data[:, 1]))
-        print('user count: %d, movie count: %d' % (user_count, movie_count))
-        R = np.zeros([user_count, movie_count])
-        for item in train_data:
-            R[int(self.user_id_map.get(item[0])), int(self.movie_id_map.get(item[1]))] = float(item[2])
-        print('load_matrix success...')
-        return R
+        iteration += 1
+        print("The loss is: %s, the rmse is: %s at iteration: %s" % (loss, rmse, iteration))
 
-    # the loss function of the model
-    def loss(self):
-        loss = np.sum(self.I * (self.R - np.dot(self.U, self.V.T)) ** 2) + self.lambda_alpha * np.sum(
-            np.square(self.U)) + self.lambda_beta * np.sum(np.square(self.V))
-        return loss
+        if iteration > 0 and iteration % 100 == 0:
+            print("dump the test result in iteration:" + str(iteration))
+            dump_result(U, V, output_set)
 
-    def RMSE(self, preds, truth):
-        return np.sqrt(np.mean(np.square(preds - truth)))
 
-    def predict(self, data):
-        index_data = np.array(
-            [[int(self.user_id_map.get(item[0])), int(self.movie_id_map.get(item[1]))] for item in data], dtype=int)
-        u_features = self.U.take(index_data.take(0, axis=1), axis=0)
-        v_features = self.V.take(index_data.take(1, axis=1), axis=0)
-        preds_value_array = np.sum(u_features * v_features, 1)
-        return preds_value_array
+def dump_result(U, V, output_set, path='./result.txt'):
+    with open(path, 'w') as f:
+        for item in output_set:
+            user_id = int(item[0])
+            movie_id = int(item[1])
+            f.write(str(predict(U, V, user_id, movie_id)) + '\n')
 
-    def save_mappings(self):
-        print('start save_mappings.')
-        with open('./model/user_id_map.txt', 'w') as file:
-            file.write(json.dumps(self.user_id_map))
 
-        with open('./model/movie_id_map.txt', 'w') as file:
-            file.write(json.dumps(self.movie_id_map))
-        print('finish save_mappings.')
+def predict(U, V, user_id, movie_id):
+    try:
+        return np.dot(U[user_id], V[movie_id].T)
+    except IndexError:
+        return 0.0
 
-    def save_model(self):
-        print('start save_model.')
-        np.savetxt('./model/u_model.txt', self.U, delimiter=',')
-        np.savetxt('./model/v_model.txt', self.V, delimiter=',')
-        print('finish save_model.')
 
-    def train(self, vali_data=None):
-        train_loss_list = []
-        vali_rmse_list = []
-        last_vali_rmse = None
-
-        # monemtum
-        momuntum_u = np.zeros(self.U.shape)
-        momuntum_v = np.zeros(self.V.shape)
-
-        for it in range(self.iterations):
-            print('start traning iteration:{: d}'.format(it))
-
-            # derivate of Vi
-            grads_u = np.dot(self.I * (self.R - np.dot(self.U, self.V.T)), -self.V) + self.lambda_alpha * self.U
-
-            # derivate of Tj
-            grads_v = np.dot((self.I * (self.R - np.dot(self.U, self.V.T))).T, -self.U) + self.lambda_beta * self.V
-
-            # update the parameters
-            momuntum_u = (self.momuntum * momuntum_u) + self.lr * grads_u
-            momuntum_v = (self.momuntum * momuntum_v) + self.lr * grads_v
-            self.U = self.U - momuntum_u
-            self.V = self.V - momuntum_v
-
-            print("gradient success, start predict and calculate loss.")
-
-            # training evaluation
-            train_loss = self.loss()
-            train_loss_list.append(train_loss)
-
-            vali_preds = self.predict(vali_data)
-            vali_rmse = self.RMSE(vali_preds, np.asarray(vali_data[:, 2], dtype=float))
-            vali_rmse_list.append(vali_rmse)
-
-            print('traning iteration:{: d} ,loss:{: f}, vali_rmse:{: f}'.format(it, train_loss, vali_rmse))
-            # print('traning iteration:{: d} , vali_rmse:{: f}'.format(it, vali_rmse))
-
-            if it > 0 and it % 10 == 0:
-                self.save_model()
-
-            if last_vali_rmse and (last_vali_rmse - vali_rmse) <= 0:
-                print('convergence at iterations:{: d}'.format(it))
-                break
-            else:
-                last_vali_rmse = vali_rmse
-
-        return self.U, self.V, train_loss_list, vali_rmse_list
+def RMSE(U, V, test):
+    count = len(test)
+    sum_rmse = 0.0
+    for t in test:
+        u = int(t[0])
+        i = int(t[1])
+        r = t[2]
+        pr = predict(U, V, u, i)
+        sum_rmse += np.square(r - pr)
+    rmse = np.sqrt(sum_rmse / count)
+    return rmse

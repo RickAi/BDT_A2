@@ -1,50 +1,29 @@
 from numpy.ma import array
-import random
+import numpy as np
 
-def load_result_data(file_path='data/test.dat'):
-    prefer = []
 
-    for line in open(file_path, 'r'):
+def load_data(path='data/train.txt', ratio=0.8):
+    data = []
+
+    for line in open(path, 'r'):
+        user_id, movie_id, rate = line.split('\t')
+        data.append([int(user_id), int(movie_id), float(rate)])
+
+    data = array(data)
+    user_count = len(set(data[:, 0]))
+    movie_count = len(set(data[:, 1]))
+
+    np.random.shuffle(data)
+    # train_set = data[0:int(len(data) * ratio)]
+    test_set = data[int(len(data) * ratio):]
+    return user_count, movie_count, data, test_set
+
+def load_test_data(path='data/test.txt'):
+    data = []
+
+    for line in open(path, 'r'):
         user_id, movie_id = line.split('\t')
-        prefer.append([str(user_id), str(movie_id)])
+        data.append([int(user_id), int(movie_id)])
 
-    data = array(prefer)
+    data = array(data)
     return data
-
-def load_and_split(file_path='data/train.dat'):
-    data = load_data(file_path)
-    return train_test_split(data)
-
-
-def mapping(user_ids):
-    ids_set = set(user_ids)
-    count = len(ids_set)
-    map = dict(zip(ids_set, range(0, count)))
-    return map
-
-
-def load_data(file_path):
-    prefer = []
-
-    for line in open(file_path, 'r'):
-        user_id, movie_id, rating = line.split('\t')
-        prefer.append([str(user_id), str(movie_id), float(rating)])
-
-    data = array(prefer)
-    return data
-
-
-def train_test_split(data, ratio=0.2):
-    train_data = []
-    test_data = []
-
-    for line in data:
-        rand = random.random()
-        if rand < ratio:
-            test_data.append(line)
-        else:
-            train_data.append(line)
-
-    train_data = array(train_data)
-    test_data = array(test_data)
-    return data, train_data, test_data
