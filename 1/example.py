@@ -28,8 +28,8 @@ def plot(X, top_eig_vec=20, dst_prefix=""):
 
     # plot the top eigen-vector
     for i in range(0, top_eig_vec):
-        vec = eig_vals[i] * top_k_eig_vecs.T[i, :]
-        display(vec.astype(int), dst_prefix + "/top_eigenvecs_" + str(i) + ".png")
+        vec = top_k_eig_vecs.T[i, :]
+        display(vec.astype(float), dst_prefix + "/top_eigenvecs_" + str(i) + ".png")
 
     # plot the top 100 eigenvalues
     plot_eigenvalues(eig_vals, 100, dst_prefix + "/eigenvalues.png")

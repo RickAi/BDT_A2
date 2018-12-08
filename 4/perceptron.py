@@ -2,6 +2,26 @@ from sklearn import metrics
 import matplotlib.pyplot as plt
 from sklearn.metrics import classification_report
 
+def to_prob(preds_score):
+    preds_prob = []
+    up = float(max(preds_score))
+    bottom = float(min(preds_score))
+    for item in preds_score:
+        if item > 0:
+            preds_prob.append(item / up)
+        else:
+            preds_prob.append(0.5 - item / bottom)
+    return preds_prob
+
+
+def predict(weights, xs):
+    result = 0
+    for x in xs:
+        if x in weights:
+            result += weights[x]
+    y_pred = 1 if result > 0 else -1
+    return y_pred, result
+
 
 def misclassify(weights, xs, y):
     result = 0
@@ -35,21 +55,21 @@ with open('./data/train.dat') as f:
 
 tests = []
 preds = []
+preds_score = []
 
 with open('./data/test.dat') as f:
     for line in f:
         xs, y = parse(line)
         tests.append(y)
-        if misclassify(weights, xs, y) is True:
-            preds.append(-y)
-        else:
-            preds.append(y)
+        y_pred, result = predict(weights, xs)
+        preds.append(y_pred)
+        preds_score.append(result)
 
 # Final precision, recall and F1 score on the testing dataset.
 print(classification_report(tests, preds))
 
 # ROC curve (as image) on the testing dataset.
-fpr, tpr, threshold = metrics.roc_curve(tests, preds)
+fpr, tpr, threshold = metrics.roc_curve(tests, to_prob(preds_score))
 roc_auc = metrics.auc(fpr, tpr)
 
 plt.title('Receiver Operating Characteristic')
